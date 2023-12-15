@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from tflite_runtime.interpreter import Interpreter
+import os
 #import tensorflow as tf
 
 def set_input_tensor(interpreter, image):
@@ -58,6 +59,8 @@ def process_image(image_path, object_detection_interpreter, character_recognitio
         display_characters(cropped_plate, character_recognition_interpreter)
 
 def display_characters(image, interpreter):
+    classes_name = os.listdir("C:/Users/mhhas/Documents/Licsence/iranis-datasets")
+
     mask = np.zeros(image.shape, dtype=np.uint8)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -83,7 +86,7 @@ def display_characters(image, interpreter):
             x, y, w, h = cv2.boundingRect(c)
 
             # Further isolate individual characters using horizontal projection or other techniques
-            ROI = thresh[y:y + h, x:x + w]
+            ROI = gray[y:y + h, x:x + w]
             characters.append((i + 1, ROI))
 
     # Load the TensorFlow Lite model
@@ -92,7 +95,7 @@ def display_characters(image, interpreter):
     # Display characters in separate matplotlib subplots
     if characters:
         num_characters = len(characters)
-        fig, axes = plt.subplots(1, num_characters, figsize=(num_characters * 2, 2))
+        fig, axes = plt.subplots(num_characters,1 , figsize=(  2, 2 * num_characters))
 
         for i, (char_index, character) in enumerate(characters):
             img = cv2.resize(character, (64, 64))
@@ -118,7 +121,7 @@ def display_characters(image, interpreter):
 
             axes[i].imshow(character, cmap='gray')
             axes[i].axis('off')
-            axes[i].set_title(f'Character {char_index} - Predicted: {predicted_label}')
+            axes[i].set_title(f'Character {char_index} - Predicted: {classes_name[predicted_label]}')
 
         plt.show()
 
