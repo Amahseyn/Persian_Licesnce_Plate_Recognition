@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from tflite_runtime.interpreter import Interpreter
 import os
+from flask import Flask, request, jsonify
+import cv2
+import numpy as np
 #import tensorflow as tf
 
 def set_input_tensor(interpreter, image):
@@ -119,4 +121,22 @@ def process(image):
 
     threshold = 0.6
 
-    process_image(image, object_detection_interpreter, character_recognition_interpreter, threshold)
+    output = process_image(image, object_detection_interpreter, character_recognition_interpreter, threshold)
+    return output
+app = Flask(__name__)
+
+@app.route('/process', methods=['POST'])
+def process_route():
+    # Receive image from the request
+    img_data = request.files['image'].read()
+    nparr = np.frombuffer(img_data, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    # Process the image
+    result = process(image)
+
+    # Return the result as JSON
+    return jsonify({'result': result})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
