@@ -43,11 +43,11 @@ def process_image(img, object_detection_interpreter, character_recognition_inter
     img = cv2.resize(img, (640, 640))
 
     results = detect_objects(object_detection_interpreter, img, threshold)
-    print(results)
+    #print(results)
     if results:
         # Crop the last detected license plate without drawing anything
         last_result = results[-1]
-        print(last_result)
+        #print(last_result)
         ymin, xmin, ymax, xmax = last_result['bounding_box']
         xmin = int(max(1, xmin * img.shape[1]))
         xmax = int(min(img.shape[1], xmax * img.shape[1]))
@@ -58,8 +58,8 @@ def process_image(img, object_detection_interpreter, character_recognition_inter
         cropped_plate = img[ymin:ymax, xmin:xmax]
 
         # Uncomment the following line to display characters using the recognition model
-        pred_characters(cropped_plate, character_recognition_interpreter)
-
+        out = pred_characters(cropped_plate, character_recognition_interpreter)
+        return out
 def pred_characters(image, interpreter):
     classes_name = os.listdir("C:/Users/mhhas/Documents/Licsence/iranis-datasets")
 
@@ -96,20 +96,30 @@ def pred_characters(image, interpreter):
     # Display characters in separate matplotlib subplots
     if characters:
         output = ''
-        for character in (characters):
-            img = cv2.resize(character, (64, 64))
-            img = img / 255.0  # Normalize pixel values to be between 0 and 1
-            img = np.expand_dims(img, axis=(0, -1))
-            img = img.astype(np.float32)
-            input_tensor_index = interpreter.get_input_details()[0]['index']
-            interpreter.set_tensor(input_tensor_index, img)
-            interpreter.invoke()
-            output_tensor_index = interpreter.get_output_details()[0]['index']
-            predictions = interpreter.get_tensor(output_tensor_index)
-            predicted_label = np.argmax(predictions, axis=1)[0]
+        for character_index, character in characters:
+            print(f"Character {character_index} shape:", character.shape)
+            
+            # Check if the character shape is as expected
+            if character.shape[0] > 0 and character.shape[1] > 0:
+                img = cv2.resize(character, (64, 64))
+                img = img / 255.0  # Normalize pixel values to be between 0 and 1
+                img = np.expand_dims(img, axis=(0, -1))
+                img = img.astype(np.float32)
+                input_tensor_index = interpreter.get_input_details()[0]['index']
+                interpreter.set_tensor(input_tensor_index, img)
+                interpreter.invoke()
+                output_tensor_index = interpreter.get_output_details()[0]['index']
+                predictions = interpreter.get_tensor(output_tensor_index)
+                predicted_label = np.argmax(predictions, axis=1)[0]
 
-            output +=  classes_name[predicted_label]
+                output += classes_name[predicted_label]
+                
+            else:
+                print(f"Skipping character {character_index} due to invalid shape")
+    print("out is", output)
     return output
+
+
 def process(image):
     # Load the object detection model
     object_detection_interpreter = Interpreter('detect.tflite')
@@ -122,6 +132,7 @@ def process(image):
     threshold = 0.6
 
     output = process_image(image, object_detection_interpreter, character_recognition_interpreter, threshold)
+    print("Process output: ", output)
     return output
 app = Flask(__name__)
 
@@ -134,9 +145,9 @@ def process_route():
 
     # Process the image
     result = process(image)
-
+    print("Result is :",result)
     # Return the result as JSON
-    return jsonify({'result': result})
+    return jsonify(result=result)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
